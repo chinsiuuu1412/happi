@@ -8,48 +8,51 @@
         <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 
         <style>
-    :root{--bg:#2d5a34;--ink:#2b1b2e;--paper:#f6e8c0;--env:#e9d29a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+    :root{--bg:#2d5a34;--ink:#2b1b2e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
     html,body{height:100%;margin:0}
     body{background:var(--bg);overflow:hidden;font-family:'VT323','Courier New',monospace;color:#fff;display:flex;align-items:center;justify-content:center;touch-action:manipulation;user-select:none}
-    #g{image-rendering:pixelated;display:block}
-    .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px}
-    #start{background:rgba(20,30,20,.72);font-size:30px;cursor:pointer}
+    [hidden]{display:none!important}
+    #stage{display:block;width:min(100vw,75dvh);height:auto;max-height:100dvh}
+    .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:16px}
+    #start{background:rgba(20,30,20,.72);font-size:clamp(22px,5vw,30px)}
     #start h1{font-size:46px;margin:0;text-shadow:3px 3px 0 var(--ink)}
-    .blink{animation:bl 1s steps(2) infinite}@keyframes bl{50%{opacity:.2}}
-    #hud{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:12px;font-size:28px;text-shadow:2px 2px 0 var(--ink)}
-    #mute{position:fixed;top:calc(6px + env(safe-area-inset-top,0px));right:10px;font-size:26px;background:none;border:0;color:#fff;cursor:pointer;font-family:inherit}
-    #end{background:rgba(20,15,30,.6);opacity:0;pointer-events:none;transition:opacity 1s;cursor:pointer;font-size:28px}
-    #end.on{opacity:1;pointer-events:auto}
-    #bq{width:min(84vw,320px);image-rendering:pixelated;animation:bob 1.6s steps(4) infinite}
-    @keyframes bob{50%{transform:translateY(-8px)}}
-    .sp{position:absolute;font-size:30px;color:#ffd23f;animation:bl 1.2s steps(2) infinite}
-    #end.tapped .t,#end.tapped #bq,#end.tapped .sp{display:none}
-    #env{position:relative;width:260px;height:170px;display:none}
-    #end.tapped #env{display:block}
-    #env>div{position:absolute}
-    .back{inset:0;background:#d6bd7e;border:4px solid var(--ink);box-sizing:border-box;box-shadow:4px 4px 0 rgba(0,0,0,.35)}
-    .pk{inset:4px;background:var(--env);clip-path:polygon(0 0,50% 58%,100% 0,100% 100%,0 100%);z-index:3}
-    .flap{inset:4px 4px auto 4px;height:58%;background:#f0dba5;clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:top;transition:transform .6s steps(6);z-index:4}
-    .open .flap{transform:rotateX(180deg);z-index:1}
-    .card{left:14px;right:14px;top:14px;bottom:10px;background-color:var(--paper);border:4px solid var(--ink);z-index:2;transition:transform .7s steps(7);color:var(--ink);padding:8px 12px;text-align:left;font-size:22px;line-height:24px;white-space:pre-wrap;box-sizing:border-box;background-image:repeating-linear-gradient(transparent 0 23px,rgba(120,80,40,.25) 23px 24px)}
-    .up .card{transform:translateY(-70px)}
-    .read .card{z-index:5;transform:translateY(-30px) scale(1.18)}
-    #cf{text-align:right}
+    button{font:inherit;cursor:pointer}
+    button:focus-visible{outline:3px solid #ffd23f;outline-offset:4px}
+    #mute{position:fixed;top:calc(6px + env(safe-area-inset-top,0px));right:10px;min-width:48px;min-height:44px;font-size:25px;background:#253d29;border:2px solid #b5c8a5;color:#fff}
+    #open-card{position:fixed;inset:0;background:transparent;border:0;color:transparent;width:100%;height:100%}
+    #open-card:focus-visible{outline-offset:-8px}
+    #downloads{position:fixed;bottom:max(12px,env(safe-area-inset-bottom,0px),calc((100dvh - 133.333vw)/2));left:8px;right:8px;text-align:center}
+    #downloads p{margin:5px auto 0;width:fit-content;max-width:100%;padding:2px 8px;background:#253d29;font-size:19px}
+    .actions{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+    .actions button,#start-button{background:#f6e8c0;color:var(--ink);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);min-height:44px;padding:4px 12px;font-size:clamp(20px,5vw,26px)}
+    .actions button:disabled{cursor:default;opacity:.72}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     </style>
 </head>
 
 <body>
-    <canvas id="g"></canvas>
-    <div id="hud">✿ 0/5</div><button id="mute" aria-label="Bật tắt nhạc">♪</button>
-    <div id="start" class="ov"><h1>Hái hoa</h1><div>Có một món quà nhỏ đang được chuẩn bị...</div><div class="blink">Chạm để bắt đầu (có nhạc)</div></div>
-    <div id="end" class="ov"><span class="sp" style="left:18%;top:22%">✦</span><span class="sp" style="right:16%;top:28%;animation-delay:.4s">✦</span><span class="sp" style="left:26%;bottom:22%;animation-delay:.8s">✦</span><span class="sp" style="right:24%;bottom:26%;animation-delay:.2s">✦</span>
-    <canvas id="bq"></canvas><div class="t blink">Chạm vào màn hình để mở thiệp</div>
-    <div id="env"><div class="back"></div><div class="card"><div id="ct"></div><div id="cb"></div><div id="cf"></div></div><div class="pk"></div><div class="flap"></div></div></div>
+    <canvas id="stage" width="576" height="768" aria-hidden="true"></canvas>
+    <div id="hud" class="sr-only" aria-live="polite">✿ 0/5</div>
+    <div id="start" class="ov"><h1>Hái hoa</h1><div>Có một món quà nhỏ đang được chuẩn bị...</div><button id="start-button" type="button">Bắt đầu (có nhạc)</button></div>
+    <button id="open-card" type="button" hidden>Mở thiệp</button>
+    <button id="mute" type="button" aria-label="Tắt nhạc" aria-pressed="false" hidden>♪</button>
+    <div id="card-text" class="sr-only" hidden></div>
+    <div id="downloads" hidden>
+        <div class="actions">
+            <button id="download-png" type="button">Tải thiệp PNG</button>
+            <button id="download-video" type="button" disabled>Tải video</button>
+        </div>
+        <p id="export-status" role="status" hidden></p>
+    </div>
     <script>
     // ====== NỘI DUNG THIỆP: điền vào đây ======
-    const CARD={to:'',body:'',from:''};
+    const CARD={
+        to:'Gửi cô Vân giáo viên chủ nhiệm A6 - K68',
+        body:'Con chào cô ạ,\nNhân dịp 20/11 này, con chúc cô sức khoẻ dồi dào, ngày càng rạng ngời để có thể hoàn thành hết chuyến đò này đến chuyến đò khác.\nHọc sinh cũ của cô, một sinh viên ngành CNTT, xin phép gửi tặng cô một tấm thiệp nho nhỏ chúc mừng Ngày Nhà giáo Việt Nam 20/11.',
+        from:'From học sinh cũ của cô <3'
+    };
     // ==========================================
-    const $=i=>document.getElementById(i),W=144,H=192,cv=$('g'),cx=cv.getContext('2d');cv.width=W;cv.height=H;
+    const $=i=>document.getElementById(i),W=144,H=192,cv=document.createElement('canvas'),cx=cv.getContext('2d');cv.width=W;cv.height=H;
     const OUT='#2b1b2e',P={r:'#e63946',R:'#9d1f35',y:'#ffd23f',b:'#6b3b17',w:'#fff',p:'#ff8fb1',P:'#c94f7c',v:'#a06be8',V:'#5b2e91',g:'#2fa24a',G:'#1b6a35',h:'#c42a3f',H:'#ee5566',u:'#5b8fe6',U:'#2f5bb0',o:'#f08a24',O:'#b85a10',q:'#ffd9e4',s:'#f2b48a',e:OUT,a:'#b9783c',c:'#ff6f8a',m:'#a3203a',j:'#26262e',n:'#d9d9de',t:'#3f68b0',f:'#f4f4f4',d:'#7a4a24',D:'#3b2210'};
     function mk(rows,o=1){const h=rows.length,w=rows[0].length,c=document.createElement('canvas');c.width=w+2;c.height=h+2;const x=c.getContext('2d');
     if(o){x.fillStyle=OUT;for(let j=0;j<h;j++)for(let i=0;i<w;i++)if(rows[j][i]!='.')for(const[a,b]of[[1,0],[-1,0],[0,1],[0,-1]]){const u=i+a,v=j+b;if(u<0||v<0||u>=w||v>=h||rows[v][u]=='.')x.fillRect(u+1,v+1,1,1)}}
@@ -65,7 +68,6 @@
     [".y.yyy.y.","yyyyyyyyy",".yybbbyy.","yyybbbyyy",".yybbbyy.","yyyyyyyyy",".y.yyy.y."],
     ["...www...",".w.www.w.","wwwyyywww","wwwyyywww","wwwwwwwww",".w.www.w.","...www..."],
     ["p.ppp.p","ppppppp","pPpPpPp",".ppppp.","..ppp.."],
-    ["..v..",".vvv.",".vVv.","vvvvv",".vVv.","vvvvv",".vVv.","..v.."]
     ["..v..",".vvv.",".vVv.","vvvvv",".vVv.","vvvvv",".vVv.","..v.."],
     ["V.VVV.V","VVVVVVV","VvVvVvV",".VVVVV.","..VVV.."],
     ["..u..",".uuu.",".uUu.","uuuuu",".uUu.",".uuu."],
@@ -86,7 +88,8 @@
     function planted(t,x,y,w){cx.drawImage(mound,x-5,y-3);cx.fillStyle=OUT;cx.fillRect(x-1,y-8,3,8);cx.fillStyle=P.g;cx.fillRect(x,y-8,1,8);cx.fillStyle=P.G;cx.fillRect(x+1,y-4,3,1);cx.fillRect(x-3,y-5,3,1);dh(cx,t,x+w,y-8-hd[t].height/2)}
     // bó hoa lớn
     function rf(c,X,Y,r,pc,ic,cc){for(const o of[1,0])for(let dy=-r-2;dy<=r+2;dy++)for(let dx=-r-2;dx<=r+2;dx++){const d=Math.hypot(dx,dy),pr=r*(.86+.14*Math.cos(Math.atan2(dy,dx)*9));if(d<=pr+o){c.fillStyle=o?OUT:d<r*.45?cc:d<r*.62?ic:pc;c.fillRect(X+dx,Y+dy,1,1)}}}
-    (function(){const c=$('bq'),x=c.getContext('2d'),g=P.g;c.width=64;c.height=78;
+    const bouquet=document.createElement('canvas');
+    (function(){const c=bouquet,x=c.getContext('2d'),g=P.g;c.width=64;c.height=78;
     [[16,10],[25,5],[37,6],[47,9],[55,16],[53,24],[58,34],[12,27],[17,40],[32,26],[46,44],[31,47]].forEach(p=>ln(x,p[0],p[1],32,62,g));
     [[6,36],[58,44],[8,48],[52,52],[22,52],[40,52]].forEach(p=>{x.fillStyle=OUT;x.fillRect(p[0]-1,p[1]-1,7,4);x.fillStyle=P.G;x.fillRect(p[0],p[1],5,2);x.fillStyle=g;x.fillRect(p[0]+1,p[1],3,1)});
     dh(x,4,16,10);dh(x,4,25,5);[[37,6],[47,9],[55,16]].forEach(p=>rf(x,p[0],p[1],3,'#f08a24','#f0a040','#ffd23f'));dh(x,0,53,24);dh(x,5,58,34);
@@ -102,7 +105,7 @@
     if(a[0]=='w'){const dx=a[1]-ch.x,dy=a[2]-ch.y,d=Math.hypot(dx,dy),s=34*dt;if(d<=s){ch.x=a[1];ch.y=a[2];nx()}else{ch.x+=dx/d*s;ch.y+=dy/d*s}}
     else if(a[0]=='p'){const i=a[1];if(at>.3&&at<1.5&&Math.random()<dt*9)burst(FP[i],2);if(at>=1.5&&!pulled[i]){pulled[i]=1;burst(FP[i],14)}if(at>=2.4){col++;$('hud').textContent='✿ '+col+'/5';nx()}}
     else if(a[0]=='c'){happy=1;if(at>1.4)nx()}
-    else{happy=1;ch.x+=84*dt;if(ch.x>W+24){ai++;done=1;$('end').classList.add('on')}}}
+    else{happy=1;ch.x+=84*dt;if(ch.x>W+24){ai++;done=1;bouquetAt=tt;$('open-card').hidden=false}}}
     function draw(){cx.drawImage(bg,0,0);const a=acts[ai];DC.forEach(d=>planted(d[2],d[0],d[1],0));;
     FP.forEach(([x,y],i)=>{if(pulled[i])cx.drawImage(hole,x-5,y-4);else{let w=0;if(a&&a[0]=='p'&&a[1]==i&&at>.3&&at<1.5)w=(tt*14|0)%2?1:-1;planted(i,FP[i][0],FP[i][1],w)}});
     ps.forEach(p=>{cx.fillStyle=p.c;cx.fillRect(p.x|0,p.y|0,2,2)});
@@ -111,19 +114,229 @@
     const X=Math.round(ch.x),Y=Math.round(cy);cx.drawImage(spr[happy][fr],X,Y);
     const hx=X+14,hy=Y+16;for(let k=0;k<col;k++){const o=O[k];ln(cx,hx,hy,hx+2+o[0],hy+o[1]+4,P.g)}for(let k=0;k<col;k++){const o=O[k];dh(cx,k,hx+2+o[0],hy+o[1])}
     if(a&&a[0]=='p'&&at>=1.5){const i=a[1],u=Math.min(1,(at-1.5)/.9),o=O[col],fx=FP[i][0],fy=hc(i),tx=hx+2+o[0],ty=hy+o[1];dh(cx,i,fx+(tx-fx)*u,fy+(ty-fy)*u-Math.sin(u*Math.PI)*14)}}
-    let last=0;function loop(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(loop)}
-    function fit(){const s=Math.min(innerWidth/W,innerHeight/H),k=s>=1?Math.floor(s):s;cv.style.width=W*k+'px';cv.style.height=H*k+'px'}addEventListener('resize',fit);fit();draw();
+    const stage=$('stage'),screen=stage.getContext('2d',{alpha:false});
+    const sw=stage.width,sh=stage.height,paper=document.createElement('canvas');
+    const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    let bouquetAt=0,openedAt=null,last=0;
+
+    function makeCard(){
+        const pen=paper.getContext('2d');
+        paper.width=1000;
+        const paragraphs=[CARD.to,...CARD.body.split('\n'),CARD.from].filter(Boolean);
+        function wrap(text){
+            const lines=[];
+            let line='';
+            for(const word of text.split(' ')){
+                const next=line?line+' '+word:word;
+                if(line&&pen.measureText(next).width>paper.width-112){
+                    lines.push(line);
+                    line=word;
+                }else line=next;
+            }
+            lines.push(line);
+            return lines;
+        }
+        pen.font='48px VT323, monospace';
+        const blocks=paragraphs.map(wrap);
+        const row=50,gap=16;
+        paper.height=Math.max(400,96+blocks.reduce((sum,lines)=>sum+lines.length*row+gap,0));
+        pen.fillStyle=OUT;
+        pen.fillRect(0,0,paper.width,paper.height);
+        pen.fillStyle='#f6e8c0';
+        pen.fillRect(8,8,paper.width-16,paper.height-16);
+        pen.font='48px VT323, monospace';
+        pen.textBaseline='top';
+        let y=50;
+        blocks.forEach((lines,i)=>{
+            pen.textAlign=paragraphs[i]===CARD.from?'right':'left';
+            const x=pen.textAlign==='right'?paper.width-56:56;
+            for(const line of lines){
+                pen.fillStyle='#e2cda3';
+                pen.fillRect(24,y+44,paper.width-48,2);
+                pen.fillStyle=OUT;
+                pen.fillText(line,x,y,paper.width-112);
+                y+=row;
+            }
+            y+=gap;
+        });
+    }
+
+    function triangle(x,y,base,height,tip,color){
+        screen.fillStyle=color;
+        screen.beginPath();
+        screen.moveTo(x,y);
+        screen.lineTo(x+base,y);
+        screen.lineTo(x+tip,y+height);
+        screen.closePath();
+        screen.fill();
+    }
+
+    function paintFrame(){
+        screen.imageSmoothingEnabled=false;
+        screen.drawImage(cv,0,0,sw,sh);
+        screen.font='32px VT323, monospace';
+        screen.textAlign='left';
+        screen.textBaseline='top';
+        screen.fillStyle=OUT;
+        screen.fillText('✿ '+col+'/5',19,19);
+        screen.fillStyle='#fff';
+        screen.fillText('✿ '+col+'/5',16,16);
+        if(!done)return;
+
+        const age=tt-bouquetAt;
+        const fade=reducedMotion?1:Math.min(1,age/.6);
+        screen.fillStyle='rgba(20,15,30,'+(.74*fade)+')';
+        screen.fillRect(0,0,sw,sh);
+        if(openedAt===null){
+            screen.globalAlpha=fade;
+            const bob=reducedMotion?0:Math.round(Math.sin(age*Math.PI*1.25)*3)*2;
+            screen.drawImage(bouquet,128,154+bob,320,390);
+            screen.font='38px VT323, monospace';
+            screen.textAlign='center';
+            screen.fillStyle='#fff';
+            screen.fillText('Chạm để mở thiệp',sw/2,570);
+            screen.fillStyle='#ffd23f';
+            screen.fillText('✦',104,204);
+            screen.fillText('✦',468,254);
+            screen.fillText('✦',139,481);
+            screen.globalAlpha=1;
+            return;
+        }
+
+        const time=reducedMotion?2:tt-openedAt;
+        const envelopeX=73,envelopeY=272,envelopeW=430,envelopeH=274;
+        const flip=Math.min(1,Math.max(0,(time-.1)/.6));
+        const rise=Math.min(1,Math.max(0,(time-.7)/.65));
+        const reveal=Math.min(1,Math.max(0,(time-1.35)/.55));
+        if(reveal<1){
+            screen.globalAlpha=1-reveal;
+            screen.fillStyle=OUT;
+            screen.fillRect(envelopeX,envelopeY,envelopeW,envelopeH);
+            screen.fillStyle='#d6bd7e';
+            screen.fillRect(envelopeX+5,envelopeY+5,envelopeW-10,envelopeH-10);
+            if(flip>.5)triangle(envelopeX+5,envelopeY+5,envelopeW-10,140*(1-2*flip),210,'#f0dba5');
+            screen.drawImage(paper,99,298-132*rise,378,218);
+            screen.fillStyle='#e9d29a';
+            screen.fillRect(envelopeX+5,envelopeY+128,envelopeW-10,envelopeH-133);
+            if(flip<=.5)triangle(envelopeX+5,envelopeY+5,envelopeW-10,140*(1-2*flip),210,'#f0dba5');
+        }
+        if(reveal>0){
+            const scale=Math.min(528/paper.width,620/paper.height);
+            const width=paper.width*scale,height=paper.height*scale;
+            screen.globalAlpha=reveal;
+            screen.imageSmoothingEnabled=true;
+            screen.drawImage(paper,(sw-width)/2,(sh-height)/2-25+32*(1-reveal),width,height);
+        }
+        screen.globalAlpha=1;
+    }
+
+    let recorder,videoUrl;
+    function showStatus(message){
+        const status=$('export-status');
+        status.textContent=message;
+        status.hidden=!message;
+    }
+    function startRecording(){
+        if(!stage.captureStream||!window.MediaRecorder){
+            showStatus('Trình duyệt này chưa hỗ trợ ghi video.');
+            return;
+        }
+        let stream;
+        const chunks=[];
+        const releaseVideo=()=>stream?.getVideoTracks().forEach(track=>track.stop());
+        try{
+            stream=stage.captureStream(30);
+            audioCapture?.stream.getAudioTracks().forEach(track=>stream.addTrack(track));
+            const mimeType=['video/mp4;codecs=avc1.42001f,mp4a.40.2','video/webm;codecs=vp8,opus','video/mp4','video/webm']
+                .find(type=>window.MediaRecorder.isTypeSupported(type));
+            recorder=new window.MediaRecorder(stream,mimeType?{mimeType}:undefined);
+            recorder.ondataavailable=event=>{if(event.data.size)chunks.push(event.data)};
+            recorder.onstop=()=>{
+                releaseVideo();
+                if(!chunks.length){
+                    showStatus('Không tạo được video. Bạn có thể tải lại trang để thử lại.');
+                    return;
+                }
+                videoUrl=URL.createObjectURL(new Blob(chunks,{type:recorder.mimeType||chunks[0].type}));
+                $('download-video').disabled=false;
+                showStatus('');
+            };
+            recorder.onerror=()=>{
+                releaseVideo();
+                showStatus('Ghi video bị gián đoạn. Bạn có thể tải lại trang để thử lại.');
+            };
+            recorder.start();
+            showStatus('Đang hoàn tất video…');
+        }catch{
+            releaseVideo();
+            recorder=undefined;
+            showStatus('Không khởi động được tính năng ghi video trên trình duyệt này.');
+        }
+    }
+    function download(url,name){
+        const link=document.createElement('a');
+        link.href=url;
+        link.download=name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+    function loop(t){
+        const dt=Math.max(0,Math.min(.05,(t-last)/1000));
+        last=t;
+        update(dt);
+        if(!done)draw();
+        paintFrame();
+        if(openedAt!==null&&tt-openedAt>=2&&$('downloads').hidden){
+            $('downloads').hidden=false;
+            $('download-png').focus({preventScroll:true});
+        }
+        if(openedAt!==null&&tt-openedAt>=6.5){
+            if(recorder?.state==='recording')recorder.stop();
+            return;
+        }
+        requestAnimationFrame(loop);
+    }
     // nhạc chiptune (Web Audio, không cần file ngoài)
-    let ac,mg,muted=0;
-    function music(){ac=new(window.AudioContext||window.webkitAudioContext)();ac.resume();mg=ac.createGain();mg.gain.value=.5;mg.connect(ac.destination);
+    let ac,mg,audioCapture,muted=false;
+    function music(){ac=new(window.AudioContext||window.webkitAudioContext)();ac.resume().catch(()=>{});mg=ac.createGain();mg.gain.value=.5;mg.connect(ac.destination);
+    if(ac.createMediaStreamDestination){audioCapture=ac.createMediaStreamDestination();mg.connect(audioCapture)}
     const M=[[72,76,79,76,84,79,76,79],[69,72,76,72,81,76,72,76],[65,69,72,69,77,72,69,72],[67,71,74,71,79,74,71,67]],B=[48,45,41,43],d=60/132/2,nb=ac.createBuffer(1,ac.sampleRate*.05,ac.sampleRate),nd=nb.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
     const n=(m,t,l,ty,v)=>{const o=ac.createOscillator(),g=ac.createGain();o.type=ty;o.frequency.value=440*2**((m-69)/12);g.gain.setValueAtTime(v,t);g.gain.linearRampToValueAtTime(0,t+l);o.connect(g);g.connect(mg);o.start(t);o.stop(t+l)};
-    let st=0,nt=ac.currentTime+.1;setInterval(()=>{while(nt<ac.currentTime+.25){const b=(st>>3)&3,s=st&7;n(M[b][s],nt,d*.9,'square',.05);if(s%4==0)n(B[b],nt,d*1.8,'triangle',.14);else if(s%4==2)n(B[b]+7,nt,d*.9,'triangle',.1);
+    let st=0,nt=ac.currentTime+.05;setInterval(()=>{if(nt<ac.currentTime-.25)nt=ac.currentTime+.05;while(nt<ac.currentTime+.25){const b=(st>>3)&3,s=st&7;n(M[b][s],nt,d*.9,'square',.05);if(s%4==0)n(B[b],nt,d*1.8,'triangle',.14);else if(s%4==2)n(B[b]+7,nt,d*.9,'triangle',.1);
     if(s&1){const h=ac.createBufferSource(),g=ac.createGain();h.buffer=nb;g.gain.value=.03;h.connect(g);g.connect(mg);h.start(nt)}st=(st+1)&31;nt+=d}},50)}
-    $('mute').onclick=e=>{e.stopPropagation();muted=!muted;if(mg)mg.gain.value=muted?0:.5;$('mute').style.opacity=muted?.4:1};
-    $('start').onclick=()=>{if(started)return;started=1;try{music()}catch(e){}$('start').style.display='none';requestAnimationFrame(loop)};
-    $('ct').textContent=CARD.to;$('cb').textContent=CARD.body;$('cf').textContent=CARD.from;
-    $('end').onclick=()=>{const e=$('end');if(!done||e.classList.contains('tapped'))return;e.classList.add('tapped');const v=$('env');setTimeout(()=>v.classList.add('open'),200);setTimeout(()=>v.classList.add('up'),900);setTimeout(()=>v.classList.add('read'),1700)};
+    $('mute').onclick=()=>{
+        muted=!muted;
+        if(mg)mg.gain.setTargetAtTime(muted?0:.5,ac.currentTime,.025);
+        $('mute').setAttribute('aria-pressed',String(muted));
+        $('mute').textContent=muted?'×♪':'♪';
+    };
+    $('start-button').onclick=()=>{
+        if(started)return;
+        started=1;
+        try{music()}catch{}
+        $('start').hidden=true;
+        if(mg)$('mute').hidden=false;
+        draw();
+        paintFrame();
+        startRecording();
+        last=performance.now();
+        requestAnimationFrame(loop);
+    };
+    $('open-card').onclick=()=>{
+        if(!done||openedAt!==null)return;
+        openedAt=tt;
+        makeCard();
+        $('open-card').hidden=true;
+        $('card-text').hidden=false;
+        $('card-text').textContent=[CARD.to,CARD.body,CARD.from].filter(Boolean).join('\n');
+    };
+    $('download-png').onclick=()=>download(paper.toDataURL('image/png'),'thiep-20-11.png');
+    $('download-video').onclick=()=>{
+        if(videoUrl)download(videoUrl,'hai-hoa-20-11.'+(recorder.mimeType.includes('mp4')?'mp4':'webm'));
+    };
+    draw();
+    paintFrame();
     </script>
 
 </body>
