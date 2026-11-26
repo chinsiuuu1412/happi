@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Thiệp kỷ niệm một năm</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body>
+  <main id="game" class="game" data-scene="start" aria-label="Thiệp kỷ niệm một năm">
+    <p class="rotate-hint">Xoay ngang để xem cảnh rộng hơn.</p>
+    <button id="sound-toggle" class="sound-toggle" type="button" data-action="toggle-sound"
+      aria-pressed="false" hidden>Tắt tiếng</button>
+
+    <div id="stage" class="stage">
+      <div class="scene-layer room room--rabbit" aria-hidden="true" hidden></div>
+      <div class="scene-layer room room--cat" aria-hidden="true" hidden></div>
+
+      <div id="rabbit" class="scene-layer character character--rabbit" hidden>
+        <img src="../docs/photos/rabbit-pixel-sprite.png" width="1217" height="1293" alt="Thỏ trắng">
+        <div id="gift-layer" class="gift-layer" hidden></div>
+      </div>
+
+      <div id="cat" class="scene-layer character character--cat" hidden>
+        <template id="cat-media">
+          <img src="../docs/photos/cat-pixel-sprite.png" width="1254" height="1254" alt="Mèo đen">
+        </template>
+      </div>
+
+      <div id="door" class="scene-layer door" aria-hidden="true" hidden>
+        <template id="door-media">
+          <img src="../docs/photos/door-pixel.png" width="845" height="1860" alt="">
+        </template>
+      </div>
+
+      <div id="fog" class="fog" aria-hidden="true" hidden></div>
+
+      <section class="scene-panel scene-panel--start" data-panel="start" aria-label="Màn chờ">
+        <button id="start-button" class="start-button" type="button" data-action="start">Bắt đầu</button>
+      </section>
+
+      <section class="scene-panel dialogue" data-panel="intro" aria-labelledby="intro-question" hidden>
+        <h2 id="intro-question" class="dialogue-heading">Ngày mai là anniversary của bạn với người yêu bạn. Bạn muốn tạo bất ngờ nho nhỏ chứ ?</h2>
+        <div class="choice-list">
+          <button class="choice-button" type="button" data-action="accept-surprise">Có</button>
+          <button class="choice-button" type="button" data-action="accept-surprise">Chắc chắn là có rồi</button>
+          <button class="choice-button" type="button" data-action="accept-surprise">Đương nhiên là có</button>
+          <button class="choice-button" type="button" data-action="accept-surprise">Cực kì có</button>
+        </div>
+      </section>
+
+      <section class="scene-panel dialogue" data-panel="gift" aria-labelledby="gift-question" hidden>
+        <h2 id="gift-question" class="dialogue-heading">Hãy lựa chọn món quà bạn muốn dành cho người yêu mình</h2>
+        <div class="choice-list">
+          <button class="choice-button" type="button" data-action="choose-gift" data-gift="bouquet"
+            data-image="../docs/photos/bouquet-cutout.png">Bó hoa</button>
+          <button class="choice-button" type="button" data-action="choose-gift" data-gift="teddy-bear"
+            data-image="../docs/photos/teddy-bear-cutout.png">Gấu bông</button>
+          <button class="choice-button" type="button" data-action="choose-gift" data-gift="cake"
+            data-image="../docs/photos/cake-cutout.png">Bánh kem</button>
+          <button class="choice-button" type="button" data-action="choose-gift" data-gift="lego"
+            data-image="../docs/photos/lego-cutout.png">Một bộ lego</button>
+        </div>
+      </section>
+
+      <section class="scene-panel dialogue" data-panel="gift-ready" aria-label="Đã chuẩn bị quà" hidden>
+        <p id="gift-ready-line">Bạn đã chuẩn bị xong, giờ hãy đến gặp người yêu của bạn thôi</p>
+      </section>
+
+      <section class="scene-panel scene-panel--flight" data-panel="flight" aria-label="Di chuyển" hidden>
+        <div id="plane" class="scene-layer plane">
+          <template id="plane-media">
+            <img src="../docs/photos/plane.webp" alt="Máy bay">
+          </template>
+        </div>
+      </section>
+
+      <section class="scene-panel dialogue" data-panel="thought" aria-label="Suy nghĩ của mèo" hidden>
+        <p id="first-thought">Haiz</p>
+      </section>
+
+      <section class="scene-panel dialogue" data-panel="thought-reveal" aria-label="Suy nghĩ của mèo" hidden>
+        <p id="thought-line" aria-hidden="true">Đi làm mệt quá, giá như có vợ mình ở đây thì tốt biết mấy</p>
+      </section>
+
+      <section class="scene-panel scene-panel--reunion" data-panel="reunion"
+        aria-labelledby="anniversary-title" hidden>
+        <h2 id="anniversary-title" class="anniversary-title" lang="en">HAPPY ANNIVERSARY</h2>
+      </section>
+
+      <section class="scene-panel scene-panel--envelope" data-panel="envelope" aria-label="Phong bì" hidden>
+        <button id="envelope" class="envelope" type="button" data-action="open-letter"
+          aria-label="Mở phong bì" aria-controls="letter">
+          <span class="wax-seal" aria-hidden="true">♥</span>
+        </button>
+      </section>
+
+      <!-- ĐIỀN THƯ VÀ ẢNH TEM
+        Thay [TÊN NGƯỜI NHẬN], [NỘI DUNG THƯ] và [CHỮ KÝ] bằng nội dung của bạn.
+        Trong #letter-stamp, thay [ẢNH TEM] bằng thẻ img có src trỏ tới ảnh tem và alt mô tả ảnh.
+      -->
+      <article id="letter" class="scene-panel letter" data-panel="letter" aria-label="Lá thư"
+        tabindex="-1" hidden>
+        <div id="letter-stamp" class="letter-stamp">[ẢNH TEM]</div>
+        <div class="letter-body">
+          <p><span lang="en">Dear</span> [TÊN NGƯỜI NHẬN],</p>
+          <p>[NỘI DUNG THƯ]</p>
+          <p><span lang="en">From</span> [CHỮ KÝ]</p>
+        </div>
+      </article>
+
+      <button id="continue-button" class="continue-button" type="button" data-action="continue" hidden>
+        Nhấn vào màn hình để tiếp tục
+      </button>
+    </div>
+
+    <p id="scene-status" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
+    <audio id="music" src="../docs/Tr%C3%A0n%20B%E1%BB%99%20Nh%E1%BB%9B.mp3" loop preload="none"></audio>
+  </main>
+</body>
+</html>
