@@ -7,6 +7,8 @@
     "cat-media", "plane-media", "door-media",
     "intro-question", "gift-question", "gift-ready-line", "first-thought",
     "thought-line", "anniversary-title", "scene-status", "envelope", "letter",
+    "letter-stamp", "replay-button", "download-png-button", "download-video-button",
+    "previous-video-button", "recording-indicator", "video-status", "png-status",
   ];
 
   function init() {
@@ -41,6 +43,12 @@
       "sound-toggle": soundToggle,
       "thought-line": thoughtLine,
       "scene-status": sceneStatus,
+      "download-png-button": pngButton,
+      "download-video-button": videoButton,
+      "previous-video-button": previousVideoButton,
+      "recording-indicator": recordingIndicator,
+      "video-status": videoStatus,
+      "png-status": pngStatus,
     } = elements;
     const fullThought = thoughtLine.textContent.trim();
     const normalSoundLabel = soundToggle.textContent.trim();
@@ -75,6 +83,10 @@
     let giftPanelEntry;
     let swipe;
     let suppressEnvelopeClick = false;
+    let musicSource;
+    let recording;
+    let savedVideo;
+    let videoMessage = "";
 
     function readDuration(property, fallback) {
       const value = styles.getPropertyValue(property).trim();
@@ -267,7 +279,9 @@
 
     function start() {
       primeDoorbell();
+      beginRecording();
       setScene("intro");
+      updateVideoControls();
     }
 
     async function prepareGiftImage(image) {
@@ -278,6 +292,7 @@
           ? Promise.resolve()
           : new Promise((resolve) => image.addEventListener("load", resolve, { once: true })));
       const ready = loaded.then(() => {
+        if (giftLayer.querySelector("img") !== image) return false;
         state.giftReady = true;
         giftLayer.hidden = rabbit.hidden;
         return true;
@@ -392,6 +407,40 @@
       envelope.classList.remove("is-opening");
       letter.focus();
       state.busy = false;
+      finishRecordingAfterLetter();
+    }
+
+    function replay() {
+      if (state.scene !== "letter") return;
+
+      if (recording && !recording.stopping) {
+        const still = document.createElement("canvas");
+        still.width = recording.canvas.width;
+        still.height = recording.canvas.height;
+        const context = still.getContext("2d");
+        if (context) {
+          context.drawImage(recording.canvas, 0, 0);
+          recording.still = still;
+        }
+      }
+
+      state.gift = null;
+      state.giftReady = false;
+      giftPanelEntry = null;
+      swipe = null;
+      suppressEnvelopeClick = false;
+      delete giftLayer.dataset.gift;
+      giftLayer.replaceChildren();
+      door.classList.remove("is-open");
+      fog.classList.remove("is-covered");
+      fog.hidden = true;
+      thoughtLine.textContent = fullThought;
+      letter.scrollTop = 0;
+      pngStatus.textContent = "";
+      announce("");
+      setScene("start");
+      updateVideoControls();
+      elements["start-button"].focus();
     }
 
     function isRepeatedGiftTap(event) {
@@ -439,6 +488,15 @@
         case "open-letter":
           if (event.detail === 0 || !suppressEnvelopeClick) void openLetter();
           break;
+        case "replay":
+          replay();
+          break;
+        case "download-png":
+          if (state.scene === "letter") void downloadLetterPng();
+          break;
+        case "download-video":
+          if (savedVideo) saveBlob(savedVideo.blob, savedVideo.filename);
+          break;
       }
     }
 
@@ -465,6 +523,443 @@
       suppressEnvelopeClick = true;
     }
 
+    function saveBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    }
+
+    function wrapText(context, text, width) {
+      const lines = [];
+      for (const row of text.split("\n")) {
+        let line = "";
+        for (const word of row.trim().split(/\s+/)) {
+          const joined = line ? line + " " + word : word;
+          if (line && context.measureText(joined).width > width) {
+            lines.push(line);
+            line = word;
+          } else {
+            line = joined;
+          }
+        }
+        lines.push(line);
+      }
+      return lines;
+    }
+
+    function makeLetterArt(stamp) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 720;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Không mở được Canvas.");
+
+      const padding = 46;
+      const lineHeight = 43;
+      const stampWidth = stamp ? 125 : 0;
+      const stampHeight = stamp ? Math.round(stampWidth * stamp.naturalHeight / stamp.naturalWidth) : 0;
+      const stampX = canvas.width - padding - stampWidth;
+      const letterStyle = window.getComputedStyle(letter);
+      const font = "30px " + letterStyle.fontFamily;
+      const paragraphs = letter.querySelectorAll(".letter-body > p");
+      const positionedLines = [];
+      let y = padding;
+
+      context.font = font;
+      for (const paragraph of paragraphs) {
+        const text = Array.from(paragraph.childNodes, (node) =>
+          node.nodeName === "BR" ? "\n" : node.textContent
+        ).join("").trim();
+        const available = stamp && y < padding + stampHeight + 22
+          ? stampX - padding - 22
+          : canvas.width - 2 * padding;
+        for (const line of wrapText(context, text, available)) {
+          positionedLines.push({ line, y });
+          y += lineHeight;
+        }
+        y += 14;
+      }
+
+      canvas.height = Math.ceil(Math.max(y, padding + stampHeight) + padding - 14);
+      context.fillStyle = styles.getPropertyValue("--color-paper").trim() || "#FFF4E3";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = styles.getPropertyValue("--color-ink").trim() || "#3F2736";
+      context.font = font;
+      context.textBaseline = "top";
+      for (const line of positionedLines) context.fillText(line.line, padding, line.y);
+      if (stamp) {
+        context.drawImage(stamp, stampX, padding, stampWidth, stampHeight);
+        context.strokeStyle = styles.getPropertyValue("--color-seal").trim() || "#A32D4E";
+        context.setLineDash([5, 4]);
+        context.strokeRect(stampX - 5, padding - 5, stampWidth + 10, stampHeight + 10);
+      }
+      return canvas;
+    }
+
+    async function downloadLetterPng() {
+      if (pngButton.disabled) return;
+      pngButton.disabled = true;
+      pngStatus.textContent = "Đang tạo PNG…";
+      try {
+        const stamp = elements["letter-stamp"].querySelector("img");
+        await document.fonts?.ready;
+        if (stamp && typeof stamp.decode === "function") await stamp.decode();
+        if (stamp && !stamp.naturalWidth) throw new Error("Ảnh tem chưa tải được.");
+        const art = makeLetterArt(stamp);
+        const blob = await new Promise((resolve) => art.toBlob(resolve, "image/png"));
+        if (!blob?.size) throw new Error("PNG trống.");
+        saveBlob(blob, "thiep-anni.png");
+        pngStatus.textContent = "";
+      } catch {
+        pngStatus.textContent = "Chưa tạo được PNG. Hãy đợi ảnh tem tải xong rồi thử lại.";
+      } finally {
+        pngButton.disabled = false;
+      }
+    }
+
+    function updateVideoControls() {
+      videoButton.disabled = !savedVideo;
+      previousVideoButton.hidden = state.scene !== "start" || !savedVideo;
+      recordingIndicator.hidden = !recording || recording.stopping || state.scene === "start";
+      videoStatus.textContent = videoMessage;
+    }
+
+    function captureAudio(session) {
+      if (!bellAudio?.createMediaStreamDestination || !bellAudio.createMediaElementSource) return;
+      try {
+        const output = bellAudio.createMediaStreamDestination();
+        const track = output.stream.getAudioTracks()[0];
+        if (!track) return;
+        if (!musicSource) {
+          musicSource = bellAudio.createMediaElementSource(music);
+          musicSource.connect(bellOutput);
+        }
+        bellOutput.connect(output);
+        session.audio = output;
+        session.stream.addTrack(track);
+      } catch {
+        // Video can still be saved if this browser cannot mix the page audio.
+      }
+    }
+
+    function releaseRecording(session) {
+      window.clearTimeout(session.finishTimer);
+      window.cancelAnimationFrame(session.frame);
+      if (session.audio) bellOutput.disconnect(session.audio);
+      if (session.stream) {
+        for (const track of session.stream.getTracks()) track.stop();
+      }
+    }
+
+    function completeRecording(session) {
+      releaseRecording(session);
+      if (recording !== session) return;
+
+      recording = null;
+      const type = (session.recorder.mimeType || session.parts[0]?.type || "").split(";")[0];
+      if (session.parts.length && (type === "video/mp4" || type === "video/webm")) {
+        savedVideo = {
+          blob: new Blob(session.parts, { type }),
+          filename: "luot-choi-anni." + (type === "video/mp4" ? "mp4" : "webm"),
+        };
+        videoMessage = session.stream.getAudioTracks().length
+          ? "Video đã sẵn sàng."
+          : "Video đã sẵn sàng. Trình duyệt này ghi được phần hình.";
+      } else {
+        videoMessage = "Chưa lưu được video. Bạn vẫn có thể tải thiệp PNG.";
+      }
+      updateVideoControls();
+    }
+
+    function stopRecording(session) {
+      if (session.stopping) return;
+      session.stopping = true;
+      window.clearTimeout(session.finishTimer);
+      window.cancelAnimationFrame(session.frame);
+      if (session.recorder.state === "inactive") completeRecording(session);
+      else session.recorder.stop();
+      updateVideoControls();
+    }
+
+    function discardRecording() {
+      if (!recording) return;
+      const previous = recording;
+      recording = null;
+      stopRecording(previous);
+    }
+
+    function failRecording(session) {
+      if (recording === session) {
+        recording = null;
+        videoMessage = "Trình duyệt không quay được video của lượt này.";
+        updateVideoControls();
+      }
+      if (session.recorder && session.recorder.state !== "inactive") stopRecording(session);
+      else releaseRecording(session);
+    }
+
+    function beginRecording() {
+      discardRecording();
+      savedVideo = null;
+      videoMessage = "";
+      if (typeof window.MediaRecorder !== "function") {
+        videoMessage = "Trình duyệt này chưa hỗ trợ quay video.";
+        updateVideoControls();
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      const session = { canvas, parts: [], nextFrameAt: 0, stopping: false };
+      recording = session;
+      try {
+        const bounds = stage.getBoundingClientRect();
+        const scale = Math.min(2, 1280 / bounds.width, 960 / bounds.height);
+        canvas.width = Math.max(2, Math.round(bounds.width * scale / 2) * 2);
+        canvas.height = Math.max(2, Math.round(bounds.height * scale / 2) * 2);
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context || typeof canvas.captureStream !== "function") throw new Error("Canvas capture");
+
+        const paint = makeGamePainter(context);
+        paint(0);
+        session.stream = canvas.captureStream(24);
+        captureAudio(session);
+        const formats = ["video/mp4", "video/webm;codecs=vp8,opus", "video/webm"];
+        const mimeType = formats.find((format) => window.MediaRecorder.isTypeSupported?.(format));
+        const options = { videoBitsPerSecond: 1_500_000 };
+        if (mimeType) options.mimeType = mimeType;
+        session.recorder = new window.MediaRecorder(session.stream, options);
+        session.recorder.addEventListener("dataavailable", (event) => {
+          if (event.data.size) session.parts.push(event.data);
+        });
+        session.recorder.addEventListener("stop", () => completeRecording(session), { once: true });
+        session.recorder.addEventListener("error", () => failRecording(session), { once: true });
+        session.recorder.start(1000);
+
+        function recordFrame(timestamp) {
+          if (recording !== session || session.stopping) return;
+          try {
+            if (timestamp >= session.nextFrameAt) {
+              if (session.still) context.drawImage(session.still, 0, 0);
+              else paint(timestamp);
+              session.nextFrameAt = timestamp + 1000 / 24;
+            }
+            session.frame = window.requestAnimationFrame(recordFrame);
+          } catch {
+            failRecording(session);
+          }
+        }
+        session.paint = paint;
+        session.frame = window.requestAnimationFrame(recordFrame);
+      } catch {
+        failRecording(session);
+      }
+      updateVideoControls();
+    }
+
+    function finishRecordingAfterLetter() {
+      const session = recording;
+      if (!session || session.stopping) return;
+      videoMessage = "Đang hoàn tất video…";
+      // Paint the reveal now even if the viewer immediately chooses replay.
+      try {
+        session.paint(0);
+        session.finishTimer = window.setTimeout(() => stopRecording(session), 2000);
+      } catch {
+        failRecording(session);
+      }
+      updateVideoControls();
+    }
+
+    function makeGamePainter(context) {
+      const roomImages = [roomRabbit, roomCat].map((room) => {
+        const url = /^url\(["']?(.*?)["']?\)$/.exec(window.getComputedStyle(room).backgroundImage)?.[1];
+        const image = new window.Image();
+        if (url) image.src = url;
+        return { room, image };
+      });
+      const controls = stage.querySelectorAll(".choice-button, #start-button, #continue-button");
+      const texts = [
+        "intro-question", "gift-question", "gift-ready-line", "first-thought",
+        "thought-line", "anniversary-title",
+      ].map((id) => elements[id]);
+      const waves = stage.querySelector(".flight-waves");
+      const waxSeal = envelope.querySelector(".wax-seal");
+      const stamp = elements["letter-stamp"].querySelector("img");
+      let letterArt;
+      let paintedStamp;
+
+      function visible(node) {
+        return node && !node.closest("[hidden]");
+      }
+
+      function drawBox(node, fill) {
+        const { left, top, width, height } = node.getBoundingClientRect();
+        if (fill && fill !== "rgba(0, 0, 0, 0)" && fill !== "transparent") {
+          context.fillStyle = fill;
+          context.fillRect(left, top, width, height);
+        }
+      }
+
+      function drawImage(image, fit, bounds = image?.getBoundingClientRect(), alignBottom = false) {
+        if (!image?.complete || !image.naturalWidth || !bounds?.width || !bounds.height) return;
+        const { left, top, width, height } = bounds;
+        let drawWidth = width;
+        let drawHeight = height;
+        if (fit !== "fill") {
+          const scale = (fit === "cover" ? Math.max : Math.min)(
+            width / image.naturalWidth, height / image.naturalHeight
+          );
+          drawWidth = image.naturalWidth * scale;
+          drawHeight = image.naturalHeight * scale;
+        }
+        const y = top + (height - drawHeight) * (alignBottom ? 1 : 0.5);
+        context.drawImage(image, left + (width - drawWidth) / 2, y, drawWidth, drawHeight);
+      }
+
+      function drawLayer(layer) {
+        if (!visible(layer)) return;
+        for (const image of layer.querySelectorAll(":scope > img")) {
+          if (!visible(image)) continue;
+          const style = window.getComputedStyle(image);
+          context.globalAlpha = Number(style.opacity);
+          context.imageSmoothingEnabled = style.imageRendering !== "pixelated";
+          const alignBottom = /(?:100%|bottom)$/.test(style.objectPosition);
+          drawImage(image, style.objectFit, image.getBoundingClientRect(), alignBottom);
+        }
+        context.globalAlpha = 1;
+        context.imageSmoothingEnabled = true;
+      }
+
+      function drawWaves(timestamp) {
+        if (!visible(waves)) return;
+        const { left, top, width, height } = waves.getBoundingClientRect();
+        const phase = reducedMotion.matches ? 0 : timestamp / 1000;
+        for (const [offset, speed, fill] of [[0.22, 1.2, "#258EC7"], [0.48, -1.6, "#185A8C"]]) {
+          context.beginPath();
+          for (let i = 0; i <= 48; i += 1) {
+            const x = left + width * i / 48;
+            const y = top + height * (offset + 0.10 * Math.sin(i * 0.4 + phase * speed));
+            if (i === 0) context.moveTo(x, y);
+            else context.lineTo(x, y);
+          }
+          context.lineTo(left + width, top + height);
+          context.lineTo(left, top + height);
+          context.closePath();
+          context.fillStyle = fill;
+          context.fill();
+        }
+      }
+
+      function drawText(node, button = false) {
+        if (!visible(node)) return;
+        const style = window.getComputedStyle(node);
+        const { left, top, width, height } = node.getBoundingClientRect();
+        if (width <= 0 || height <= 0) return;
+        const padding = parseFloat(style.paddingLeft) || 0;
+        const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.35;
+        context.font = style.fontWeight + " " + style.fontSize + " " + style.fontFamily;
+        const lines = wrapText(context, node.textContent.trim(), Math.max(1, width - 2 * padding));
+        context.globalAlpha = Number(style.opacity);
+        drawBox(node, style.backgroundColor);
+        context.fillStyle = style.color;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        const y = top + (button
+          ? Math.max(0, (height - lines.length * lineHeight) / 2)
+          : parseFloat(style.paddingTop) || 0);
+        lines.forEach((line, index) => context.fillText(line, left + width / 2, y + (index + 0.5) * lineHeight));
+        context.globalAlpha = 1;
+      }
+
+      function drawEnvelope() {
+        if (!visible(envelope)) return;
+        const { left, top, width, height } = envelope.getBoundingClientRect();
+        drawBox(envelope, "#EEC9C3");
+        context.beginPath();
+        context.moveTo(left, top);
+        context.lineTo(left + width, top);
+        context.lineTo(left + width / 2, top + height * (envelope.classList.contains("is-opening") ? 0.2 : 0.59));
+        context.closePath();
+        context.fillStyle = "#F7DCD2";
+        context.fill();
+        const seal = waxSeal.getBoundingClientRect();
+        context.beginPath();
+        context.arc(seal.left + seal.width / 2, seal.top + seal.height / 2, seal.width / 2, 0, 2 * Math.PI);
+        context.fillStyle = "#A32D4E";
+        context.fill();
+        drawText(waxSeal);
+      }
+
+      function drawOpenLetter() {
+        const loadedStamp = stamp?.complete && stamp.naturalWidth ? stamp : null;
+        if (!letterArt || loadedStamp !== paintedStamp) {
+          paintedStamp = loadedStamp;
+          letterArt = makeLetterArt(loadedStamp);
+        }
+        const { left, top, width, height } = letter.getBoundingClientRect();
+        context.save();
+        context.beginPath();
+        context.rect(left, top, width, height);
+        context.clip();
+        drawBox(letter, "#FFF4E3");
+        context.drawImage(letterArt, left, top - letter.scrollTop, width, letterArt.height * width / letterArt.width);
+        context.restore();
+      }
+
+      return (timestamp) => {
+        const { left, top, width, height } = stage.getBoundingClientRect();
+        if (width <= 0 || height <= 0) return;
+        const { width: canvasWidth, height: canvasHeight } = context.canvas;
+        const scale = Math.min(canvasWidth / width, canvasHeight / height);
+        context.fillStyle = "#21192D";
+        context.fillRect(0, 0, canvasWidth, canvasHeight);
+        context.save();
+        try {
+          context.translate((canvasWidth - width * scale) / 2, (canvasHeight - height * scale) / 2);
+          context.scale(scale, scale);
+          context.translate(-left, -top);
+          context.beginPath();
+          context.rect(left, top, width, height);
+          context.clip();
+          const background = window.getComputedStyle(stage).backgroundColor;
+          drawBox(stage, background === "rgba(0, 0, 0, 0)" ? "#2B2135" : background);
+          for (const { room, image } of roomImages) {
+            if (!visible(room)) continue;
+            context.save();
+            const { left: x, top: y, width: w, height: h } = room.getBoundingClientRect();
+            context.beginPath();
+            context.rect(x, y, w, h);
+            context.clip();
+            context.filter = window.getComputedStyle(room).filter;
+            drawImage(image, "cover", room.getBoundingClientRect());
+            context.restore();
+          }
+          for (const layer of [plane, cat, door, rabbit, giftLayer]) drawLayer(layer);
+          drawWaves(timestamp);
+
+          if (state.scene === "letter") drawOpenLetter();
+          else {
+            const panel = panels.get(state.scene);
+            if (panel?.classList.contains("dialogue")) drawBox(panel, "#2B2135");
+            for (const node of texts) drawText(node);
+            for (const button of controls) drawText(button, true);
+            drawEnvelope();
+          }
+          if (visible(fog)) {
+            context.globalAlpha = Number(window.getComputedStyle(fog).opacity);
+            drawBox(fog, "#F2F0F8");
+            context.globalAlpha = 1;
+          }
+        } finally {
+          context.restore();
+        }
+      };
+    }
+
     game.addEventListener("click", handleClick);
     game.addEventListener("keydown", (event) => {
       if (event.repeat && (event.key === "Enter" || event.key === " ") &&
@@ -479,11 +974,13 @@
     music.addEventListener("error", handleMusicError);
     window.addEventListener("click", tryMusicOnInteraction, true);
     window.addEventListener("keydown", tryMusicOnInteraction, true);
+    window.addEventListener("pagehide", discardRecording);
 
     hideImageOnError(rabbit.querySelector("img"));
     setScene("start");
     soundToggle.hidden = false;
     syncSound();
+    updateVideoControls();
     void playMusic();
   }
 

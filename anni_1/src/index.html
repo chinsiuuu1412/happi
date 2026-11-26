@@ -36,9 +36,13 @@
       </div>
 
       <div id="fog" class="fog" aria-hidden="true" hidden></div>
+      <p id="recording-indicator" class="recording-indicator" role="status" hidden>Đang quay game</p>
 
       <section class="scene-panel scene-panel--start" data-panel="start" aria-label="Màn chờ">
-        <button id="start-button" class="start-button" type="button" data-action="start">Bắt đầu</button>
+        <div class="start-actions">
+          <button id="start-button" class="start-button" type="button" data-action="start">Bắt đầu</button>
+          <button id="previous-video-button" type="button" data-action="download-video" hidden>Tải video lượt trước</button>
+        </div>
       </section>
 
       <section class="scene-panel dialogue" data-panel="intro" aria-labelledby="intro-question" hidden>
@@ -114,10 +118,17 @@
           <p>Tiện đây thì mình cũng xin phép gửi đến bạn Quangiu lời mời đến buổi SweetTalk với sự tham gia của bạn My sẽ diễn ra ngay bây giờ :)) và dự kiến sẽ kéo dài đến lúc nào ngủ gật thì hoi 🥱</p>
           <p>Bạn có đồng ý tham gia hong !?</p>
           <p>✓ Có<br>✓ Phải có<br>✓ Oke babii</p>
-          <p lang="en">Annisersary 9 months</p>
+          <p lang="en">Anniversary 9 months</p>
           <p>iuuuu.... Bố Cá 🐬</p>
           <p><span lang="en">From</span> tieumy </p>
         </div>
+        <div class="letter-actions" role="group" aria-label="Chơi lại và tải thiệp">
+          <button id="replay-button" type="button" data-action="replay">Chơi lại</button>
+          <button id="download-png-button" type="button" data-action="download-png">Tải thiệp PNG</button>
+          <button id="download-video-button" type="button" data-action="download-video" disabled>Tải video</button>
+        </div>
+        <p id="video-status" class="export-status" role="status"></p>
+        <p id="png-status" class="export-status" role="status"></p>
       </article>
 
       <button id="continue-button" class="continue-button" type="button" data-action="continue" hidden>

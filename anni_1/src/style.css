@@ -610,6 +610,48 @@ button:active:not(:disabled) {
   object-fit: contain;
 }
 
+.start-actions,
+.letter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.start-actions {
+  flex-direction: column;
+  align-items: stretch;
+  max-inline-size: 100%;
+}
+
+.letter-actions {
+  clear: both;
+  margin-block-start: var(--space-5);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid #D7B5A9;
+}
+
+.letter-actions button:disabled {
+  opacity: 0.65;
+}
+
+.export-status:not(:empty) {
+  margin-block-start: var(--space-2);
+  font-size: var(--font-size-hint);
+}
+
+.recording-indicator {
+  position: absolute;
+  z-index: 5;
+  inset-block-start: var(--stage-inset);
+  inset-inline-start: var(--stage-inset);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  background-color: var(--color-seal);
+  color: var(--color-text);
+  font-size: var(--font-size-hint);
+  pointer-events: none;
+}
+
 /* Responsive and input modes */
 @container (min-width: 36rem) {
   .choice-list {
