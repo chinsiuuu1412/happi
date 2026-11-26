@@ -10,6 +10,7 @@
   --color-muted: #E9D6E2;
   --color-line: #755C79;
   --color-sky: #349FE2;
+  --color-reunion-pink: #FFD0E8;
   --font-body: system-ui, sans-serif;
   --font-size-body: clamp(0.9375rem, 0.87rem + 0.3vw, 1.125rem);
   --font-size-hint: 0.875rem;
@@ -32,7 +33,8 @@
   --duration-entry: 180ms;
   --duration-title: 200ms;
   --duration-transition: 320ms;
-  --duration-door: 650ms;
+  --duration-door: 850ms;
+  --duration-rabbit-entry: 900ms;
   --duration-bob: 900ms;
   --duration-flight: 2.8s;
   --ease-smooth: ease-in-out;
@@ -130,6 +132,7 @@ button:active:not(:disabled) {
 #stage {
   position: relative;
   isolation: isolate;
+  container-type: inline-size;
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: minmax(0, 1fr);
@@ -154,6 +157,7 @@ button:active:not(:disabled) {
 
 #game[data-scene="flight"] #stage {
   background-color: var(--color-sky);
+  background-image: linear-gradient(transparent 78%, #185A8C);
 }
 
 .scene-panel {
@@ -239,12 +243,13 @@ button:active:not(:disabled) {
   translate: -50% 0;
 }
 
-#game[data-scene="reunion"] #cat {
-  inset-inline-start: 34%;
+#game:is([data-scene="door-opening"], [data-scene="rabbit-entry"], [data-scene="reunion"]) #cat {
+  inset-inline-start: 29%;
 }
 
-#game[data-scene="reunion"] #rabbit {
-  inset-inline-start: 66%;
+#game:is([data-scene="rabbit-entry"], [data-scene="reunion"]) #rabbit {
+  z-index: 3;
+  inset-inline-start: 52%;
 }
 
 #gift-layer {
@@ -286,24 +291,46 @@ button:active:not(:disabled) {
 }
 
 #door {
+  --door-width: min(100cqi, calc(100cqb * 464 / 660));
+  --door-height: calc(var(--door-width) * 660 / 464);
   z-index: 2;
-  inset-inline-start: min(64%, 100% - 10rem);
-  inline-size: min(19%, 10rem);
+  inset-inline-start: 59%;
+  inline-size: min(32%, 14rem);
   container-type: size;
 }
 
-#door > img {
+#door > .door-frame {
   position: absolute;
+  inset-inline-start: 50%;
   inset-block-end: 0;
-  inline-size: min(100cqi, calc(100cqb * 845 / 1860));
+  inline-size: var(--door-width);
   block-size: auto;
+  translate: -50% 0;
+}
+
+#door::before,
+#door > .door-leaf {
+  position: absolute;
+  inset-inline-start: calc(50% - var(--door-width) * 0.30);
+  inset-block-end: calc(var(--door-height) * 0.08);
+  inline-size: calc(var(--door-width) * 0.57);
+  block-size: calc(var(--door-height) * 0.84);
+}
+
+#door::before {
+  content: "";
+  background: radial-gradient(ellipse at center, #674251, #32243A 76%);
+}
+
+#door > .door-leaf {
+  object-fit: fill;
   transform: perspective(40rem) rotateY(0deg);
-  transform-origin: 8% center;
+  transform-origin: 5% center;
   transition: transform var(--duration-door) var(--ease-out);
 }
 
-#door.is-open > img {
-  transform: perspective(40rem) rotateY(-74deg);
+#door.is-open > .door-leaf {
+  transform: perspective(40rem) rotateY(-78deg);
 }
 
 .scene-panel--flight {
@@ -313,7 +340,7 @@ button:active:not(:disabled) {
 }
 
 #plane {
-  inset: 0;
+  inset: 0 0 18%;
 }
 
 #plane > img {
@@ -321,6 +348,38 @@ button:active:not(:disabled) {
   block-size: 100%;
   object-fit: contain;
   object-position: center;
+}
+
+.flight-waves {
+  position: absolute;
+  inset: auto 0 0;
+  block-size: 30%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.flight-waves::before,
+.flight-waves::after {
+  position: absolute;
+  inset: auto auto 0 0;
+  inline-size: 200%;
+  block-size: 100%;
+  content: "";
+  clip-path: polygon(0 22%, 6.25% 6%, 12.5% 22%, 18.75% 38%, 25% 22%, 31.25% 6%,
+    37.5% 22%, 43.75% 38%, 50% 22%, 56.25% 6%, 62.5% 22%, 68.75% 38%,
+    75% 22%, 81.25% 6%, 87.5% 22%, 93.75% 38%, 100% 22%, 100% 100%, 0 100%);
+  animation: wave-travel 7s linear infinite;
+}
+
+.flight-waves::before {
+  background-color: #258EC7;
+}
+
+.flight-waves::after {
+  block-size: 74%;
+  background: linear-gradient(#1479AB, #185A8C);
+  animation-duration: 5s;
+  animation-direction: reverse;
 }
 
 #fog {
@@ -427,7 +486,7 @@ button:active:not(:disabled) {
 }
 
 .scene-panel--reunion {
-  z-index: 3;
+  z-index: 4;
   position: absolute;
   inset: 0;
   display: grid;
@@ -441,13 +500,27 @@ button:active:not(:disabled) {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-control);
   background: #2B2135ED;
-  color: var(--color-text);
+  color: var(--color-reunion-pink);
   font-size: var(--font-size-title);
   font-weight: var(--weight-title);
   letter-spacing: 0.055em;
   line-height: 1.15;
   text-align: center;
   overflow-wrap: anywhere;
+}
+
+#game[data-scene="reunion"] .room--cat {
+  filter: blur(4px);
+  transform: scale(1.025);
+}
+
+#game[data-scene="reunion"] #stage::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  box-shadow: inset 0 0 clamp(1.5rem, 5vw, 3.5rem) #F58CB655;
 }
 
 /* Envelope and letter */
@@ -500,13 +573,10 @@ button:active:not(:disabled) {
 
 #letter {
   z-index: 3;
-  display: grid;
+  display: block;
   grid-area: 1 / 1 / 4 / 2;
-  grid-template-columns: minmax(0, 1fr) clamp(3.125rem, 19%, 6rem);
   align-self: center;
   justify-self: center;
-  align-items: start;
-  gap: var(--space-3);
   inline-size: min(calc(100% - 2 * var(--stage-inset)), 36rem);
   max-block-size: min(72vh, 29rem);
   max-block-size: min(72svh, 29rem);
@@ -517,30 +587,22 @@ button:active:not(:disabled) {
   border-radius: var(--radius-panel);
   background-color: var(--color-paper);
   color: var(--color-ink);
+  font-family: system-ui, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji",
+    "Segoe UI Symbol", sans-serif;
   box-shadow: var(--shadow-panel);
   overflow-wrap: anywhere;
 }
 
-.letter-body {
-  display: grid;
-  grid-row: 1;
-  grid-column: 1;
-  gap: var(--space-3);
-  min-inline-size: 0;
+.letter-body > p + p {
+  margin-block-start: var(--space-3);
 }
 
 .letter-stamp {
-  display: grid;
-  grid-row: 1;
-  grid-column: 2;
-  place-items: center;
-  min-inline-size: 0;
-  min-block-size: 2.75rem;
+  float: right;
+  inline-size: clamp(3.125rem, 19%, 6rem);
+  margin: 0 0 var(--space-2) var(--space-3);
   padding: var(--space-1);
   border: 1px dashed var(--color-seal);
-  font-size: 0.75rem;
-  line-height: 1.2;
-  text-align: center;
 }
 
 .letter-stamp img {
@@ -635,6 +697,11 @@ button:active:not(:disabled) {
   animation: plane-drift var(--duration-flight) var(--ease-smooth) infinite;
 }
 
+#game[data-scene="rabbit-entry"] #rabbit {
+  transform-origin: center bottom;
+  animation: rabbit-step-out var(--duration-rabbit-entry) var(--ease-out) both;
+}
+
 #game[data-scene="flight"] #continue-button:not([hidden]) {
   animation: fade-in var(--duration-hint) var(--ease-out) both;
 }
@@ -666,6 +733,24 @@ button:active:not(:disabled) {
 
 @keyframes plane-drift {
   50% { transform: translate(1.2%, -1.5%) scale(1.025); }
+}
+
+@keyframes wave-travel {
+  to { transform: translateX(-50%); }
+}
+
+@keyframes rabbit-step-out {
+  0% {
+    transform: translateX(clamp(3.25rem, 22cqi, 13rem)) scale(0.60);
+    clip-path: inset(2% 17% 0 17%);
+  }
+  30% { transform: translate(clamp(2.15rem, 15cqi, 8rem), -4px) scale(0.73); }
+  60% {
+    transform: translateX(clamp(1.25rem, 8cqi, 4rem)) scale(0.89);
+    clip-path: inset(0);
+  }
+  80% { transform: translate(clamp(0.4rem, 3cqi, 1.25rem), -4px) scale(0.96); }
+  100% { transform: translateX(0) scale(1); clip-path: inset(0); }
 }
 
 @keyframes fade-in {

@@ -56,14 +56,18 @@
       reading: 650,
       readingReduced: 1800,
       beforeDoor: 200,
+      rabbitEntry: readDuration("--duration-rabbit-entry", 900),
+      giftLoadLimit: 1200,
     };
     const state = {
       scene: "start",
       gift: null,
+      giftReady: false,
       canContinue: false,
       busy: false,
       muted: false,
       musicFailed: false,
+      autoplayBlocked: false,
       musicPending: false,
     };
     let bellAudio;
@@ -100,12 +104,15 @@
       if (image.isConnected && image.complete && image.naturalWidth === 0) image.hidden = true;
     }
 
-    function mountSceneImage(layer, template) {
+    function mountSceneImages(layer, template, priority = "auto") {
       if (layer.querySelector("img")) return;
-      const image = template.content.firstElementChild?.cloneNode(true);
-      if (!image) return;
-      hideImageOnError(image);
-      layer.append(image);
+      for (const source of template.content.children) {
+        const image = source.cloneNode(true);
+        image.fetchPriority = priority;
+        hideImageOnError(image);
+        layer.append(image);
+        if (typeof image.decode === "function") void image.decode().catch(() => {});
+      }
     }
 
     function showContinue(visible) {
@@ -120,20 +127,22 @@
       showContinue(false);
 
       const preparing = name === "intro" || name === "gift" || name === "gift-ready";
-      const atCatRoom = name === "thought" || name === "thought-reveal" || name === "reunion";
+      const atDoor = name === "door-opening" || name === "rabbit-entry" || name === "reunion";
+      const atCatRoom = name === "thought" || name === "thought-reveal" || atDoor;
 
       for (const [panelName, panel] of panels) panel.hidden = panelName !== name;
       roomRabbit.hidden = !preparing;
       roomCat.hidden = !atCatRoom;
-      rabbit.hidden = !preparing && name !== "reunion";
+      rabbit.hidden = !preparing && name !== "rabbit-entry" && name !== "reunion";
       cat.hidden = !atCatRoom;
-      door.hidden = name !== "reunion";
-      giftLayer.hidden = !state.gift || rabbit.hidden;
+      door.hidden = !atDoor;
+      giftLayer.hidden = !state.giftReady || rabbit.hidden;
 
-      if (name === "flight") {
-        mountSceneImage(plane, elements["plane-media"]);
-        mountSceneImage(cat, elements["cat-media"]);
-        mountSceneImage(door, elements["door-media"]);
+      if (name === "intro") {
+        mountSceneImages(plane, elements["plane-media"]);
+      } else if (name === "gift") {
+        mountSceneImages(cat, elements["cat-media"], "low");
+        mountSceneImages(door, elements["door-media"], "low");
       }
 
       if (name === "intro" || name === "gift") {
@@ -164,7 +173,7 @@
       music.muted = state.muted;
       if (bellOutput) bellOutput.gain.value = state.muted ? 0 : 1;
 
-      const canRetryMusic = state.muted && state.musicFailed;
+      const canRetryMusic = (!state.muted && state.autoplayBlocked) || (state.muted && state.musicFailed);
       soundToggle.textContent = canRetryMusic ? "Bật nhạc" : normalSoundLabel;
       if (canRetryMusic) soundToggle.removeAttribute("aria-pressed");
       else soundToggle.setAttribute("aria-pressed", String(state.muted));
@@ -191,6 +200,7 @@
 
     function handleMusicError() {
       state.musicFailed = true;
+      state.autoplayBlocked = false;
       syncSound();
     }
 
@@ -201,8 +211,10 @@
         if (retry && music.error) music.load();
         await music.play();
         state.musicFailed = false;
-      } catch {
-        handleMusicError();
+        state.autoplayBlocked = false;
+      } catch (error) {
+        if (error?.name === "NotAllowedError") state.autoplayBlocked = true;
+        else handleMusicError();
       } finally {
         state.musicPending = false;
         syncSound();
@@ -210,12 +222,24 @@
     }
 
     function toggleSound() {
+      if (state.autoplayBlocked && !state.muted) {
+        primeDoorbell();
+        void playMusic();
+        return;
+      }
       state.muted = !state.muted;
       syncSound();
       if (state.muted) return;
 
       primeDoorbell();
       if (state.musicFailed) void playMusic(true);
+    }
+
+    function tryMusicOnInteraction(event) {
+      if (!state.autoplayBlocked || state.muted || event.isTrusted === false) return;
+      if (event.type === "keydown" && (event.repeat || (event.key !== "Enter" && event.key !== " "))) return;
+      if (event.target?.closest?.("button") === soundToggle) return;
+      void playMusic();
     }
 
     function ringDoorbell() {
@@ -242,10 +266,30 @@
     }
 
     function start() {
-      soundToggle.hidden = false;
       primeDoorbell();
-      void playMusic();
       setScene("intro");
+    }
+
+    async function prepareGiftImage(image) {
+      let timeout;
+      const loaded = typeof image.decode === "function"
+        ? image.decode()
+        : (image.complete && image.naturalWidth > 0
+          ? Promise.resolve()
+          : new Promise((resolve) => image.addEventListener("load", resolve, { once: true })));
+      const ready = loaded.then(() => {
+        state.giftReady = true;
+        giftLayer.hidden = rabbit.hidden;
+        return true;
+      }, () => false);
+      const deadline = new Promise((resolve) => {
+        timeout = window.setTimeout(() => resolve(false), duration.giftLoadLimit);
+      });
+      try {
+        return await Promise.race([ready, deadline]);
+      } finally {
+        window.clearTimeout(timeout);
+      }
     }
 
     async function chooseGift(button) {
@@ -258,13 +302,14 @@
 
       const image = document.createElement("img");
       image.alt = button.textContent.trim();
-      image.addEventListener("error", () => { image.hidden = true; }, { once: true });
+      image.fetchPriority = "high";
+      hideImageOnError(image);
       image.src = imagePath;
       giftLayer.replaceChildren(image);
 
       setScene("gift-ready");
       announce(elements["gift-ready-line"].textContent.trim());
-      await wait(motionTime(duration.entry));
+      if (await prepareGiftImage(image)) await wait(motionTime(duration.entry));
       state.busy = false;
       showContinue(true);
     }
@@ -288,11 +333,17 @@
       await wait(reducedMotion.matches ? duration.readingReduced : duration.reading);
 
       ringDoorbell();
-      door.hidden = false;
-      await wait(duration.beforeDoor);
+      showContinue(true);
+    }
+
+    async function welcomeRabbit() {
+      setScene("door-opening");
+      await wait(motionTime(duration.beforeDoor));
       door.classList.add("is-open");
       await wait(motionTime(duration.door));
 
+      setScene("rabbit-entry");
+      await wait(motionTime(duration.rabbitEntry));
       setScene("reunion");
       announce(elements["anniversary-title"].textContent.trim());
       await wait(motionTime(duration.title));
@@ -318,6 +369,9 @@
             break;
           case "thought":
             await revealThought();
+            break;
+          case "thought-reveal":
+            await welcomeRabbit();
             break;
           case "reunion":
             setScene("envelope");
@@ -358,7 +412,7 @@
       if (button.disabled || button.closest("[hidden]")) return;
 
       const action = button.dataset.action;
-      if (action === "toggle-sound" && state.scene !== "start") {
+      if (action === "toggle-sound") {
         toggleSound();
         return;
       }
@@ -423,10 +477,14 @@
     envelope.addEventListener("pointercancel", cancelSwipe);
     envelope.addEventListener("lostpointercapture", cancelSwipe);
     music.addEventListener("error", handleMusicError);
+    window.addEventListener("click", tryMusicOnInteraction, true);
+    window.addEventListener("keydown", tryMusicOnInteraction, true);
 
     hideImageOnError(rabbit.querySelector("img"));
     setScene("start");
+    soundToggle.hidden = false;
     syncSound();
+    void playMusic();
   }
 
   init();

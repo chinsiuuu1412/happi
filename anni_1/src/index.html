@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Thiệp kỷ niệm một năm</title>
+  <title>Thiệp kỷ niệm anni 9 tháng</title>
   <link rel="stylesheet" href="./style.css">
   <script src="./script.js" defer></script>
 </head>
@@ -30,7 +30,8 @@
 
       <div id="door" class="scene-layer door" aria-hidden="true" hidden>
         <template id="door-media">
-          <img src="../docs/photos/door-pixel.png" width="845" height="1860" alt="">
+          <img class="door-frame" src="../docs/photos/doraemon-door-frame.png" width="464" height="660" alt="">
+          <img class="door-leaf" src="../docs/photos/doraemon-door-leaf.png" width="294" height="720" alt="">
         </template>
       </div>
 
@@ -74,6 +75,7 @@
             <img src="../docs/photos/plane.webp" alt="Máy bay">
           </template>
         </div>
+        <div class="flight-waves" aria-hidden="true"></div>
       </section>
 
       <section class="scene-panel dialogue" data-panel="thought" aria-label="Suy nghĩ của mèo" hidden>
@@ -96,17 +98,25 @@
         </button>
       </section>
 
-      <!-- ĐIỀN THƯ VÀ ẢNH TEM
-        Thay [TÊN NGƯỜI NHẬN], [NỘI DUNG THƯ] và [CHỮ KÝ] bằng nội dung của bạn.
-        Trong #letter-stamp, thay [ẢNH TEM] bằng thẻ img có src trỏ tới ảnh tem và alt mô tả ảnh.
-      -->
+      <!-- Chỉnh lời thư trong .letter-body và đổi ảnh tem qua src bên dưới. -->
       <article id="letter" class="scene-panel letter" data-panel="letter" aria-label="Lá thư"
         tabindex="-1" hidden>
-        <div id="letter-stamp" class="letter-stamp">[ẢNH TEM]</div>
+        <div id="letter-stamp" class="letter-stamp">
+          <img src="../docs/photos/tem%20image.jpg" width="843" height="1124" alt="Ảnh tem trên lá thư">
+        </div>
         <div class="letter-body">
-          <p><span lang="en">Dear</span> [TÊN NGƯỜI NHẬN],</p>
-          <p>[NỘI DUNG THƯ]</p>
-          <p><span lang="en">From</span> [CHỮ KÝ]</p>
+          <p><span lang="en">Dear</span> Quangiu,</p>
+          <p>Yo :))</p>
+          <p>Ghê chưa ghê chưa trộm vía quen đc hẳn tới bây giờ là được hẳn 9 tháng ròi cơ :))) số 1(9) Nguyễn Công Trứ lun</p>
+          <p>Hi mong là tương lai 2 đứa sẽ có anni lên hẳn 4-5 chữ số mới bõ công hehheheee</p>
+          <p>Game vui hong :)) nhà tài trợ AnhsNgocc làm cho đấy :)) xịn chưaa</p>
+          <p>( Cbi nói câu Em tao mà! 🥱 cho mà xem )</p>
+          <p>Tiện đây thì mình cũng xin phép gửi đến bạn Quangiu lời mời đến buổi SweetTalk với sự tham gia của bạn My sẽ diễn ra ngay bây giờ :)) và dự kiến sẽ kéo dài đến lúc nào ngủ gật thì hoi 🥱</p>
+          <p>Bạn có đồng ý tham gia hong !?</p>
+          <p>✓ Có<br>✓ Phải có<br>✓ Oke babii</p>
+          <p lang="en">Annisersary 9 months</p>
+          <p>iuuuu.... Bố Cá 🐬</p>
+          <p><span lang="en">From</span> tieumy </p>
         </div>
       </article>
 
