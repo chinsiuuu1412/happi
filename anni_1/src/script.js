@@ -96,7 +96,8 @@
     function hideImageOnError(image) {
       if (!image) return;
       image.addEventListener("error", () => { image.hidden = true; }, { once: true });
-      if (image.complete && image.naturalWidth === 0) image.hidden = true;
+      // A detached template image can report complete before it starts loading.
+      if (image.isConnected && image.complete && image.naturalWidth === 0) image.hidden = true;
     }
 
     function mountSceneImage(layer, template) {
